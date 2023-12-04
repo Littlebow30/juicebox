@@ -1,13 +1,24 @@
 const { Client } = require('pg') // imports the pg module
 
 const client = new Client({
-  connectionString: process.env.DATABASE_URL || 'postgres://localhost:5432/juicebox-dev',
+  connectionString: process.env.DATABASE_URL || 'postgres://localhost:5432/juicebox',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 });
 
 /**
  * USER Methods
  */
+
+async function getUsers() {
+  try{
+    const { row } =await client.query(`
+    select is, username, name , location from users`);
+
+    return rows;
+  } catch (error) {
+    throw error
+  }
+ }
 
 async function createUser({ 
   username, 
@@ -114,6 +125,20 @@ async function getUserByUsername(username) {
 /**
  * POST Methods
  */
+async function getPosts() {
+  try {
+    const { rows: postIds } = await client.query(`
+    select 'authorId' from posts`);
+
+    const posts = await Promise.all(postIDs.map(
+      posts => getPostById(post.authorId)
+    ));
+
+    return posts;
+  }catch (error) {
+    throw erroe
+  }
+}
 
 async function createPost({
   authorId,
@@ -136,7 +161,7 @@ async function createPost({
   }
 }
 
-async function updatePost(postId, fields = {}) {
+async function updatePost(id, fields = {}) {
   // read off the tags & remove that field 
   const { tags } = fields; // might be undefined
   delete fields.tags;
@@ -152,7 +177,7 @@ async function updatePost(postId, fields = {}) {
       await client.query(`
         UPDATE posts
         SET ${ setString }
-        WHERE id=${ postId }
+        WHERE id=${ id }
         RETURNING *;
       `, Object.values(fields));
     }
@@ -177,7 +202,7 @@ async function updatePost(postId, fields = {}) {
     `, [postId]);
     
     // and create post_tags as necessary
-    await addTagsToPost(postId, tagList);
+    await addTagsToPost(id, tagList);
 
     return await getPostById(postId);
   } catch (error) {
@@ -280,6 +305,24 @@ async function getPostsByTagName(tagName) {
 /**
  * TAG Methods
  */
+async function getPostsByUser(userId) {
+  try {
+    const { rows: postIds } = await client.query(`
+      SELECT id 
+      FROM posts 
+      WHERE "authorId"=${ userId };
+    `);
+
+    const posts = await Promise.all(postIds.map(
+      post => getPostById( post.id )
+    ));
+
+    return posts;
+  } catch (error) {
+    throw error;
+  }
+}
+
 
 async function createTags(tagList) {
   if (tagList.length === 0) {
